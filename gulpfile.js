@@ -1,86 +1,78 @@
-// Load Gulp stuff
-const { src, dest, task, watch, series, parallel } = require('gulp');
-
-// CSS related plugins
-const sass = require('gulp-sass');
-const autoprefixer = require('gulp-autoprefixer');
-
-// JS related plugins
-const uglify = require('gulp-uglify');
+const gulp = require('gulp');
 const babelify = require('babelify');
+const browsersync = require('browser-sync').create();
 const browserify = require('browserify');
+// const options = require('gulp-options');
+const gulpif = require('gulp-if');
+const log = require('gulplog');
 const source = require('vinyl-source-stream');
 const buffer = require('vinyl-buffer');
-const stripDebug = require('gulp-strip-debug');
+const $ = require('gulp-load-plugins')(); // Refer to plugins using camelcase like '$.imagemin()'
 
-// Utility plugins
-const rename = require('gulp-rename');
-const sourcemaps = require('gulp-sourcemaps');
-const notify = require('gulp-notify');
-const plumber = require('gulp-plumber');
-const options = require('gulp-options');
-const gulpif = require('gulp-if');
 
-// Browers related plugins
-const browserSync = require('browser-sync' ).create();
-
-const jsSRC = './src/js/';
-const jsFront = 'scripts.js';
-const jsFiles = [ jsFront ];
-const jsURL = './dist/js/';
-
-// Sources and Destinations
-const paths = {
-  styles: {
-    src: 'src/sass/*.scss',
-    dest: 'dist/css/',
-  },
+// Declare fille tree
+const tree = {
   html: {
     src: 'src/*.html',
-    dest: 'dist/',
+    dist: 'dist/',
   },
   images: {
     src: 'src/images/*',
-    dest: 'dist/images/',
+    dist: 'dist/images',
   },
   js: {
-    src: 'src/js/',
-    dest: 'dist/js/',
+    src: 'src/js/*.js',
+    dist: 'dist/js',
+  },
+  css: {
+    src: 'src/scss/*.scss',
+    dist: 'dist/css',
   },
 };
 
-// Tasks
-function browserSyncCall() {
-  browserSync.init({
+// BROWSERSYNC
+function browserSync(done) {
+  browsersync.init({
     server: {
       baseDir: './dist/',
     },
-    browser: 'google chrome',
-    notify: false,
+    port: 3000,
   });
-}
-
-function reload(done) {
-  browserSync.reload();
   done();
 }
 
-function css(done) {
-  src([paths.styles.src])
-    .pipe(sourcemaps.init())
-    .pipe(sass({
-      errLogToConsole: true,
-      outputStyle: 'compressed',
-    }))
-    .on('error', console.error.bind(console))
-    .pipe(autoprefixer({ browsers: ['last 2 versions', '> 5%', 'Firefox ESR'] }))
-    .pipe(rename({ suffix: '.min' }))
-    .pipe(sourcemaps.write('./'))
-    .pipe(dest(paths.styles.dest))
-    .pipe(browserSync.stream());
+// BROWSERSYNC RELOAD
+function browserSyncReload(done) {
+  browsersync.reload();
   done();
 }
 
+// CLEAR DIST
+function clear() {
+  return gulp
+    .src('dist')
+    .pipe($.clean());
+}
+
+// HTML FUNCTION
+function html() {
+  return gulp
+    .src(tree.html.src)
+    .pipe($.plumber())
+    .pipe(gulp.dest(tree.html.dist));
+}
+
+// IMAGE FUNCTION
+function images() {
+  return gulp
+    .src(tree.images.src)
+    .pipe($.plumber())
+    .pipe($.newer('./dist/images'))
+    .pipe($.imagemin())
+    .pipe(gulp.dest(tree.images.dist));
+}
+
+/*
 function js(done) {
   jsFiles.map((entry) => {
     return browserify({
@@ -100,34 +92,51 @@ function js(done) {
   });
   done();
 }
+*/
+// JS FUNCTION
+function js() {
+  const b = browserify({
+    entries: 'src/js/scripts.js',
+    debug: true,
+  });
 
-function triggerPlumber(srcFile, destFile) {
-  return src(srcFile)
-    .pipe(plumber())
-    .pipe(dest(destFile));
+  return b
+    .transform(babelify, { presets: ['@babel/preset-env'] })
+    .bundle()
+    .pipe(source('scripts.js'))
+    .pipe(buffer())
+    .pipe(gulpif($.options.has('prod'), $.stripDebug()))
+    .pipe($.sourcemaps.init({ loadMaps: true }))
+    .pipe($.rename({ extname: '.min.js' }))
+    .pipe($.uglify())
+    .on('error', log.error)
+    .pipe($.sourcemaps.write('./'))
+    .pipe(gulp.dest(tree.js.dist));
 }
 
-function images() {
-  return triggerPlumber(paths.images.src, paths.images.dest);
-}
-
-function html() {
-  return triggerPlumber(paths.html.src, paths.html.dest);
+function scss() {
+  return gulp
+    .src(tree.css.src)
+    .pipe($.plumber())
+    .pipe($.sourcemaps.init())
+    .pipe($.sass().on('error', $.sass.logError))
+    .pipe($.autoprefixer({
+      browsers: ['last 3 versions', '> 0.5%'],
+    }))
+    .pipe($.cssnano())
+    .pipe($.sourcemaps.write('.'))
+    .pipe(gulp.dest(tree.css.dist));
 }
 
 function watchFiles() {
-  watch(paths.styles.src, series(css, reload));
-  watch(paths.js.src, series(js, reload));
-  watch(paths.images.src, series(images, reload));
-  watch(paths.html.src, series(html, reload));
-  src(`${paths.js.dest}scripts.min.js`)
-    .pipe(notify({ message: 'Gulp is Watching, Happy Coding!' }));
+  gulp.watch('./src/scss/*', gulp.series(scss, browserSyncReload));
+  gulp.watch('./src/js/*', gulp.series(js, browserSyncReload));
+  gulp.watch('./src/images/*', gulp.series(images, browserSyncReload));
+  gulp.watch('./src/*.html', gulp.series(html, browserSyncReload));
 }
 
-// Initial load
-task('css', css);
-task('js', js);
-task('images', images);
-task('html', html);
-task('default', parallel(css, js, images, html));
-task('watch', parallel(browserSyncCall, watchFiles));
+// Default task
+gulp.task('default', gulp.series(clear, gulp.parallel(html, images, js, scss), gulp.parallel(watchFiles, browserSync)));
+
+// Add AWS publish here
+gulp.task('publish', gulp.series(clear, gulp.parallel(html, images, js, scss)));
