@@ -2,7 +2,6 @@ const gulp = require('gulp');
 const babelify = require('babelify');
 const browsersync = require('browser-sync').create();
 const browserify = require('browserify');
-// const options = require('gulp-options');
 const gulpif = require('gulp-if');
 const log = require('gulplog');
 const source = require('vinyl-source-stream');
@@ -30,6 +29,7 @@ const tree = {
   },
 };
 
+
 // BROWSERSYNC
 function browserSync(done) {
   browsersync.init({
@@ -41,11 +41,13 @@ function browserSync(done) {
   done();
 }
 
+
 // BROWSERSYNC RELOAD
 function browserSyncReload(done) {
   browsersync.reload();
   done();
 }
+
 
 // CLEAR DIST
 function clear() {
@@ -54,6 +56,7 @@ function clear() {
     .pipe($.clean());
 }
 
+
 // HTML FUNCTION
 function html() {
   return gulp
@@ -61,6 +64,7 @@ function html() {
     .pipe($.plumber())
     .pipe(gulp.dest(tree.html.dist));
 }
+
 
 // IMAGE FUNCTION
 function images() {
@@ -72,27 +76,7 @@ function images() {
     .pipe(gulp.dest(tree.images.dist));
 }
 
-/*
-function js(done) {
-  jsFiles.map((entry) => {
-    return browserify({
-      entries: [paths.js.src + entry],
-    })
-      .transform(babelify, { presets: ['@babel/preset-env'] })
-      .bundle()
-      .pipe(source(entry))
-      .pipe(rename({ extname: '.min.js' }))
-      .pipe(buffer())
-      .pipe(gulpif(options.has('production'), stripDebug()))
-      .pipe(sourcemaps.init({ loadMaps: true }))
-      .pipe(uglify())
-      .pipe(sourcemaps.write('.'))
-      .pipe(dest(paths.js.dest))
-      .pipe(browserSync.stream());
-  });
-  done();
-}
-*/
+
 // JS FUNCTION
 function js() {
   const b = browserify({
@@ -114,6 +98,7 @@ function js() {
     .pipe(gulp.dest(tree.js.dist));
 }
 
+
 function scss() {
   return gulp
     .src(tree.css.src)
@@ -128,6 +113,7 @@ function scss() {
     .pipe(gulp.dest(tree.css.dist));
 }
 
+
 function watchFiles() {
   gulp.watch('./src/scss/*', gulp.series(scss, browserSyncReload));
   gulp.watch('./src/js/*', gulp.series(js, browserSyncReload));
@@ -135,8 +121,10 @@ function watchFiles() {
   gulp.watch('./src/*.html', gulp.series(html, browserSyncReload));
 }
 
+
 // Default task
 gulp.task('default', gulp.series(clear, gulp.parallel(html, images, js, scss), gulp.parallel(watchFiles, browserSync)));
+
 
 // Add AWS publish here
 gulp.task('publish', gulp.series(clear, gulp.parallel(html, images, js, scss)));
