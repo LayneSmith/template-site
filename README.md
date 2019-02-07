@@ -1,7 +1,7 @@
 # Gulp 4 build template for web projects
 This is my current starting point for static html projects.
 
-##Features
+## Features
 * `src` to `dist` pattern
 * `browsersync` for live previews
 * `*.html` copied to `dist`
@@ -10,13 +10,13 @@ This is my current starting point for static html projects.
 * `sass` `autoprefixer` `cssnano` `sourcemap` all `*.css` files.
 * Watches all `.html` `.scss` `.js` `images/*.*` files
 
-##Prerequisites
+## Prerequisites
 Install these first, if you haven't already.
 * Node
 * NPM
 * Gulp
 
-### Installing
+## Installing
 * `git clone` this repo
 * `git init` to start your own repo
 * Make sure your `.gitignore` file is accurate
@@ -26,7 +26,7 @@ Install these first, if you haven't already.
 * In Terminal, navigate to your project directory and run `npm install`
 * Run `gulp` to spin up the development server and monitor changes
 
-##Using
+## Using
 Running `gulp` will initiate the process and start watching and updating the previews.
 
 Running `gulp publish` will remove all comments and logs and create fresh copies of `dist` files. 
